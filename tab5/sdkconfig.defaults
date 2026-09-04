@@ -1,0 +1,21 @@
+# M5Stack Tab5
+CONFIG_IDF_TARGET="esp32p4"
+
+# Tab5 has 16 MB QIO flash.  This test does not need PSRAM or the display.
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+
+# Keep UART0 as the primary console and mirror logs to the USB-Serial-JTAG
+# connector used by `idf.py monitor` on the Tab5.
+CONFIG_ESP_CONSOLE_UART_DEFAULT=y
+CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG=y
+CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200
+CONFIG_ESPTOOLPY_MONITOR_BAUD=115200
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+
+# RF-board v1.3 reference: active 26 MHz source, AC-coupled into XA.
+CONFIG_DXFT8_SI5351_REFERENCE_HZ=26000000
+CONFIG_DXFT8_SI5351_EXTERNAL_REFERENCE=y
+
+# Safe for a real RF board. Enable only in a local sdkconfig for mock testing.
+CONFIG_DXFT8_RUN_TX_PATH_SELF_TEST=n

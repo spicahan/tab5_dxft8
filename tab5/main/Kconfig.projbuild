@@ -1,0 +1,72 @@
+menu "TAB5 DXFT8 I2C test"
+
+config DXFT8_TAB5_I2C_SDA_GPIO
+    int "Port A SDA GPIO"
+    range 0 63
+    default 53
+
+config DXFT8_TAB5_I2C_SCL_GPIO
+    int "Port A SCL GPIO"
+    range 0 63
+    default 54
+
+config DXFT8_TAB5_I2C_FREQUENCY_HZ
+    int "I2C clock frequency (Hz)"
+    range 10000 400000
+    default 100000
+
+config DXFT8_TAB5_I2C_INTERNAL_PULLUPS
+    bool "Enable ESP32-P4 internal I2C pull-ups"
+    default y
+    help
+        Suitable for the short Port A jumper used during bring-up.  The RF
+        daughter board should provide external pull-ups for production use.
+
+config DXFT8_SI5351_ADDRESS
+    hex "Si5351 7-bit I2C address"
+    range 0x08 0x77
+    default 0x60
+
+config DXFT8_SI5351_REFERENCE_HZ
+    int "Si5351 reference frequency (Hz)"
+    range 10000000 40000000
+    default 26000000
+    help
+        Barb's RF-board v1.3 uses a 26 MHz active oscillator coupled into XA.
+        This remains configurable for development modules with another
+        reference frequency.
+
+choice DXFT8_SI5351_REFERENCE_MODE
+    prompt "Si5351 XA reference mode"
+    default DXFT8_SI5351_EXTERNAL_REFERENCE
+    help
+        Select the input type and internal load capacitance for register 183.
+        The RF-board schematic uses an AC-coupled external oscillator, which
+        requires the 0 pF setting. Passive-crystal modules must match their
+        crystal's specified load capacitance.
+
+config DXFT8_SI5351_EXTERNAL_REFERENCE
+    bool "External clock on XA (0 pF; RF-board v1.3)"
+
+config DXFT8_SI5351_CRYSTAL_6PF
+    bool "Passive crystal, 6 pF"
+
+config DXFT8_SI5351_CRYSTAL_8PF
+    bool "Passive crystal, 8 pF"
+
+config DXFT8_SI5351_CRYSTAL_10PF
+    bool "Passive crystal, 10 pF"
+
+endchoice
+
+config DXFT8_RUN_TX_PATH_SELF_TEST
+    bool "Briefly exercise the TX clock-enable mask"
+    default n
+    help
+        Enables CLK0 briefly while keeping CLK1/QSD running, matching the
+        RF-board's normal transmit clock state. This does not operate the
+        separate G47/G48 T/R controls.
+        Enable this only for the RF-board mock acceptance test.  It must stay
+        disabled when a powered PA or antenna is connected.
+
+endmenu

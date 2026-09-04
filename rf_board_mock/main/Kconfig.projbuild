@@ -22,6 +22,37 @@ menu "Tab5 DXFT8 mock configuration"
             Unshifted seven-bit I2C address. The normal Si5351 address is
             0x60; do not enter the on-wire value 0xC0.
 
+    config DXFT8_MOCK_SI5351_REFERENCE_HZ
+        int "Emulated Si5351 reference frequency (Hz)"
+        range 10000000 40000000
+        default 26000000
+        help
+            Nominal reference frequency used when decoding and validating the
+            programmed PLL and clock outputs. Barb's RF-board v1.3 schematic
+            AC-couples a 26 MHz active oscillator into XA and leaves XB open.
+
+    choice DXFT8_MOCK_SI5351_REFERENCE_MODE
+        prompt "Expected Si5351 register 183 reference mode"
+        default DXFT8_MOCK_SI5351_EXTERNAL_REFERENCE
+        help
+            Select the reference wiring that the host is expected to program.
+            The mock checks register 183 when an output is enabled. The RF-board
+            v1.3 default is an active external reference on XA, which uses the
+            zero-capacitance code plus the required reserved-bit pattern.
+
+        config DXFT8_MOCK_SI5351_EXTERNAL_REFERENCE
+            bool "Active external reference on XA (0x12)"
+
+        config DXFT8_MOCK_SI5351_CRYSTAL_6PF
+            bool "Passive crystal, 6 pF load (0x52)"
+
+        config DXFT8_MOCK_SI5351_CRYSTAL_8PF
+            bool "Passive crystal, 8 pF load (0x92)"
+
+        config DXFT8_MOCK_SI5351_CRYSTAL_10PF
+            bool "Passive crystal, 10 pF load (0xD2)"
+    endchoice
+
     config DXFT8_MOCK_I2C_INTERNAL_PULLUPS
         bool "Enable ESP32-S3 weak internal I2C pull-ups"
         default n

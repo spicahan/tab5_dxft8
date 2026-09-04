@@ -4,17 +4,32 @@ This repository contains bench firmware for a YD-ESP32-23
 (ESP32-S3-WROOM-1 N16R8) used in place of the planned Tab5 DXFT8 RF daughter
 board.
 
-The first milestone emulates the daughter board's Si5351 on I2C:
+The current milestone emulates the daughter board's Si5351 on I2C:
 
 - seven-bit address `0x60`;
 - address acknowledgement for an I2C scanner;
 - a 256-byte shadow register file for writes;
 - register-pointer and auto-increment behavior for writes;
-- one-byte register reads; and
+- one-byte register reads;
+- read-only, write-zero-to-clear, and self-clearing register behavior;
+- validation and decoded-frequency logging for PLLA/B and CLK0/1; and
 - transaction logging through the YD board's CH343 USB-to-UART port.
 
 The project targets the locally installed ESP-IDF 5.5.1 slave-driver v2 API.
-I2S/PCM1808 emulation will be added as a separate milestone.
+The decoder defaults to the RF-board v1.3 schematic's active 26 MHz source,
+AC-coupled into XA with XB unused. It expects register 183 = `0x12`, models PLL
+lock status after reset strobes, and validates the actual board clock plan:
+
+- CLK0: 7.074 MHz TX/PA clock from PLLA;
+- CLK1: 28.296 MHz RX/QSD clock from PLLB;
+- register 3 = `0xFF` for all off, `0xFD` for RX, and `0xFC` for TX-ready.
+
+CLK1 deliberately remains enabled in the TX-ready state because the board's
+QSD is hard-enabled; G47/G48 perform the actual RF-path switching. The mock
+warns on unsafe initialization order, a TX-only `0xFE` clock state, enabled
+unused outputs, missing PLL reset, wrong source/control registers, or invalid
+PLL/MultiSynth parameters. I2S/PCM1808 emulation remains a separate future
+milestone.
 
 ## Immediate test: Tab5 factory demo Port A
 
@@ -88,9 +103,10 @@ Exit the monitor with `Ctrl-]`.
 Expected startup output includes:
 
 ```text
-Tab5 DXFT8 RF-card mock - I2C milestone
+Tab5 DXFT8 RF-card mock - Si5351 integration milestone
 ready: address=0x60 (7-bit), SDA=GPIO8, SCL=GPIO9
-Ready for the Tab5 external I2C scan
+frequency decoder reference=26000000 Hz (active external reference on XA), register 183=0x12
+Ready for the Tab5 Si5351 host test
 ```
 
 ## Current readback limitation
@@ -99,8 +115,9 @@ ESP-IDF's I2C slave API reports that a master wants to read, but does not tell
 the application the requested byte count. This first milestone deliberately
 queues one byte per read request so unread response bytes cannot contaminate a
 later transaction. It is suitable for address scans, Si5351 register writes,
-and single-byte status reads. General multi-byte read emulation will be added
-after observing the exact transaction pattern used by the Tab5 Si5351 driver.
+and single-byte status reads. General multi-byte read emulation can be added
+when another host needs it.
 
-The real Si5351 primarily receives configuration writes, so this limitation
-does not block the factory-demo scan or the next firmware bring-up step.
+The Tab5 host deliberately uses one-byte status/readback transactions, a
+pattern also supported by the real Si5351, so this limitation does not reduce
+the current integration test's coverage.

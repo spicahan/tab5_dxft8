@@ -8,7 +8,7 @@ static const char *TAG = "dxft8_mock";
 
 void app_main(void)
 {
-    ESP_LOGI(TAG, "Tab5 DXFT8 RF-card mock - I2C milestone");
+    ESP_LOGI(TAG, "Tab5 DXFT8 RF-card mock - Si5351 integration milestone");
     ESP_ERROR_CHECK(si5351_emulator_start());
-    ESP_LOGI(TAG, "Ready for the Tab5 external I2C scan");
+    ESP_LOGI(TAG, "Ready for the Tab5 Si5351 host test");
 }
