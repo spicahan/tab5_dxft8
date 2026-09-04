@@ -1,0 +1,9 @@
+# The version-two slave driver fixes known write/read and clock-stretch issues
+# in the original ESP-IDF I2C slave implementation.
+CONFIG_I2C_ENABLE_SLAVE_DRIVER_VERSION_2=y
+
+# The YD-ESP32-23 variant used here has 16 MB flash. The first milestone does
+# not require its PSRAM.
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y

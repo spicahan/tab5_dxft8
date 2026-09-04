@@ -1,0 +1,39 @@
+menu "Tab5 DXFT8 mock configuration"
+
+    config DXFT8_MOCK_I2C_SDA_GPIO
+        int "YD-ESP32-23 SDA GPIO"
+        range 0 48
+        default 8
+        help
+            GPIO connected to the Tab5 I2C SDA signal.
+
+    config DXFT8_MOCK_I2C_SCL_GPIO
+        int "YD-ESP32-23 SCL GPIO"
+        range 0 48
+        default 9
+        help
+            GPIO connected to the Tab5 I2C SCL signal.
+
+    config DXFT8_MOCK_SI5351_ADDRESS
+        hex "Emulated Si5351 7-bit address"
+        range 0x08 0x77
+        default 0x60
+        help
+            Unshifted seven-bit I2C address. The normal Si5351 address is
+            0x60; do not enter the on-wire value 0xC0.
+
+    config DXFT8_MOCK_I2C_INTERNAL_PULLUPS
+        bool "Enable ESP32-S3 weak internal I2C pull-ups"
+        default n
+        help
+            Leave this disabled when using Tab5, which provides pull-ups.
+            It can be enabled for a short-wire bench test whose master has
+            no pull-ups, but proper external pull-ups are preferred.
+
+    config DXFT8_MOCK_LOG_TRANSACTIONS
+        bool "Log Si5351 register transactions"
+        default y
+        help
+            Log received writes and single-byte read responses over UART0.
+
+endmenu
