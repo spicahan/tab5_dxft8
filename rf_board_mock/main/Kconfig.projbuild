@@ -67,4 +67,52 @@ menu "Tab5 DXFT8 mock configuration"
         help
             Log received writes and single-byte read responses over UART0.
 
+    menu "PCM1808 I2S emulator"
+
+        config DXFT8_MOCK_I2S_MCLK_GPIO
+            int "MCLK monitor GPIO"
+            range 0 48
+            default 4
+            help
+                Connect to Tab5 MCLK. The ESP32-S3 pulse counter measures this
+                signal independently; the I2S slave itself does not use MCLK.
+
+        config DXFT8_MOCK_I2S_BCLK_GPIO
+            int "I2S BCLK input GPIO"
+            range 0 48
+            default 5
+
+        config DXFT8_MOCK_I2S_LRCK_GPIO
+            int "I2S LRCK/WS input GPIO"
+            range 0 48
+            default 6
+
+        config DXFT8_MOCK_I2S_DOUT_GPIO
+            int "I2S DOUT GPIO"
+            range 0 48
+            default 7
+
+        config DXFT8_MOCK_I2S_SAMPLE_RATE_HZ
+            int "Expected I2S sample rate (Hz)"
+            range 8000 96000
+            default 48000
+            help
+                The production PCM1808 interface uses 48 kHz. The mock is an
+                I2S slave, so BCLK and LRCK are supplied by the Tab5.
+
+        config DXFT8_MOCK_MONITOR_MCLK
+            bool "Measure the Tab5 MCLK with the pulse counter"
+            default y
+
+        config DXFT8_MOCK_MCLK_TOLERANCE_PERCENT
+            int "MCLK measurement tolerance (percent)"
+            depends on DXFT8_MOCK_MONITOR_MCLK
+            range 1 20
+            default 5
+            help
+                Accounts for the short software-timed measurement gate. This
+                checks gross clock errors; it is not a crystal-accuracy test.
+
+    endmenu
+
 endmenu

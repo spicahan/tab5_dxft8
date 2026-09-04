@@ -1,4 +1,4 @@
-menu "TAB5 DXFT8 I2C test"
+menu "TAB5 DXFT8 bring-up"
 
 config DXFT8_TAB5_I2C_SDA_GPIO
     int "Port A SDA GPIO"
@@ -68,5 +68,75 @@ config DXFT8_RUN_TX_PATH_SELF_TEST
         separate G47/G48 T/R controls.
         Enable this only for the RF-board mock acceptance test.  It must stay
         disabled when a powered PA or antenna is connected.
+
+menu "PCM1808 I2S validation"
+
+config DXFT8_RUN_I2S_SELF_TEST
+    bool "Run the I2S validation after the Si5351 test"
+    default y
+    help
+        Starts the ESP32-P4 as I2S master RX on the RF-card M5-Bus pins.
+        Disable this to retain an I2C-only test when the I2S wires are absent.
+
+config DXFT8_TAB5_I2S_MCLK_GPIO
+    int "MCLK/SCKI output GPIO"
+    depends on DXFT8_RUN_I2S_SELF_TEST
+    range 0 63
+    default 16
+
+config DXFT8_TAB5_I2S_BCLK_GPIO
+    int "BCLK output GPIO"
+    depends on DXFT8_RUN_I2S_SELF_TEST
+    range 0 63
+    default 45
+
+config DXFT8_TAB5_I2S_LRCK_GPIO
+    int "LRCK/WS output GPIO"
+    depends on DXFT8_RUN_I2S_SELF_TEST
+    range 0 63
+    default 3
+
+config DXFT8_TAB5_I2S_DIN_GPIO
+    int "ADC DOUT / Tab5 DIN GPIO"
+    depends on DXFT8_RUN_I2S_SELF_TEST
+    range 0 63
+    default 4
+
+config DXFT8_TAB5_I2S_SAMPLE_RATE_HZ
+    int "I2S sample rate (Hz)"
+    depends on DXFT8_RUN_I2S_SELF_TEST
+    range 8000 96000
+    default 48000
+    help
+        Production default: Fs=48 kHz, MCLK=256fs (12.288 MHz), stereo
+        32-bit slots and 64 BCLK per frame (3.072 MHz BCLK).
+
+choice DXFT8_I2S_TEST_MODE
+    prompt "I2S validation mode"
+    depends on DXFT8_RUN_I2S_SELF_TEST
+    default DXFT8_I2S_MOCK_PATTERN_TEST
+    help
+        Select the deterministic YD-board test for bench wiring, or ordinary
+        sample statistics for the eventual real PCM1808. The mock-pattern
+        test is expected to fail when connected to real audio.
+
+config DXFT8_I2S_MOCK_PATTERN_TEST
+    bool "Validate the YD-board mock pattern"
+
+config DXFT8_I2S_CAPTURE_STATS
+    bool "Capture and summarize real PCM1808 samples"
+
+endchoice
+
+config DXFT8_I2S_TEST_FRAMES
+    int "Frames to validate/capture"
+    depends on DXFT8_RUN_I2S_SELF_TEST
+    range 480 480000
+    default 4800
+    help
+        At 48 kHz, 4800 frames represents 100 ms. The deterministic pattern
+        test checks every frame for channel order, alignment and continuity.
+
+endmenu
 
 endmenu

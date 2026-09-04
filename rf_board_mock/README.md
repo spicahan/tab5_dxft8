@@ -4,7 +4,7 @@ This repository contains bench firmware for a YD-ESP32-23
 (ESP32-S3-WROOM-1 N16R8) used in place of the planned Tab5 DXFT8 RF daughter
 board.
 
-The current milestone emulates the daughter board's Si5351 on I2C:
+The firmware emulates the daughter board's Si5351 on I2C:
 
 - seven-bit address `0x60`;
 - address acknowledgement for an I2C scanner;
@@ -14,6 +14,16 @@ The current milestone emulates the daughter board's Si5351 on I2C:
 - read-only, write-zero-to-clear, and self-clearing register behavior;
 - validation and decoded-frequency logging for PLLA/B and CLK0/1; and
 - transaction logging through the YD board's CH343 USB-to-UART port.
+
+It also emulates the PCM1808 digital interface:
+
+- I2S slave transmission driven by the Tab5's BCLK and LRCK;
+- 48 kHz stereo Philips I2S, with 24 meaningful bits in 32-bit slots;
+- deterministic blocks with complementary channel tags and one continuous
+  modulo-65536 frame sequence; and
+- independent pulse-counter measurement of the Tab5's 12.288 MHz MCLK. With
+  the default configuration, valid pattern data is withheld until MCLK passes
+  and revoked if MCLK is later lost.
 
 The project targets the locally installed ESP-IDF 5.5.1 slave-driver v2 API.
 The decoder defaults to the RF-board v1.3 schematic's active 26 MHz source,
@@ -28,8 +38,7 @@ CLK1 deliberately remains enabled in the TX-ready state because the board's
 QSD is hard-enabled; G47/G48 perform the actual RF-path switching. The mock
 warns on unsafe initialization order, a TX-only `0xFE` clock state, enabled
 unused outputs, missing PLL reset, wrong source/control registers, or invalid
-PLL/MultiSynth parameters. I2S/PCM1808 emulation remains a separate future
-milestone.
+PLL/MultiSynth parameters.
 
 ## Immediate test: Tab5 factory demo Port A
 
@@ -72,6 +81,43 @@ or temporarily enable the weak ESP32-S3 pull-ups in `menuconfig`.
 Official Tab5 pin map:
 <https://docs.m5stack.com/en/core/Tab5>
 
+## PCM1808 I2S mock wiring
+
+Leave the I2C wires on Port A. Add the following M5-Bus connections, with a
+common ground and no connection between the boards' power rails:
+
+| Tab5 M5-Bus | Direction | YD-ESP32-23 |
+| --- | --- | --- |
+| GND | — | GND |
+| Pin 2 / P4 GPIO16 / MCLK | -> | GPIO4 / pulse-counter monitor |
+| Pin 8 / P4 GPIO45 / BCLK | -> | GPIO5 / I2S BCLK input |
+| Pin 19 / P4 GPIO3 / LRCK | -> | GPIO6 / I2S WS input |
+| Pin 20 / P4 GPIO4 / DIN | <- | GPIO7 / I2S DOUT |
+
+The production-compatible format is:
+
+```text
+Fs          48,000 Hz
+sample      signed 24-bit, left-aligned in a 32-bit slot
+channels    stereo (left then right)
+frame       64 BCLK
+MCLK        256fs = 12.288 MHz
+BCLK        64fs  = 3.072 MHz
+protocol    Philips I2S (one-bit delay after LRCK changes)
+```
+
+The S3 I2S peripheral does not consume MCLK in slave mode, so GPIO4 feeds a
+pulse counter solely to verify that signal. Before the Tab5 starts its clocks,
+the mock normally logs that it is waiting for MCLK and its I2S writer quietly
+remains stopped. Those are idle states, not failures. The monitor samples
+frequently, only enables the pattern after an in-tolerance MCLK measurement,
+and changes to silence if MCLK is subsequently lost; therefore the Tab5 cannot
+pass with the MCLK wire omitted, including after an earlier successful run.
+
+With jumper wires, place optional 22–47 ohm series resistors at the driving
+end: Tab5 for MCLK/BCLK/LRCK and YD GPIO7 for DOUT. Keep wires short and pair
+the clock bundle with nearby ground conductors.
+
 ## Build
 
 ```sh
@@ -103,10 +149,13 @@ Exit the monitor with `Ctrl-]`.
 Expected startup output includes:
 
 ```text
-Tab5 DXFT8 RF-card mock - Si5351 integration milestone
+Tab5 DXFT8 RF-card mock - Si5351 + PCM1808 integration
 ready: address=0x60 (7-bit), SDA=GPIO8, SCL=GPIO9
 frequency decoder reference=26000000 Hz (active external reference on XA), register 183=0x12
-Ready for the Tab5 Si5351 host test
+PCM1808 I2S slave armed: BCLK=GPIO5, LRCK=GPIO6, DOUT=GPIO7
+format: 48000 Hz, Philips I2S, stereo, 24 valid bits in 32-bit slots, 64 BCLK/frame
+MCLK monitor: GPIO4, expected=12288000 Hz (+/-5%)
+Ready for the Tab5 I2C and I2S host tests
 ```
 
 ## Current readback limitation

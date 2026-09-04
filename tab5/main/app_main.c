@@ -12,6 +12,7 @@
 #include "freertos/task.h"
 #include "sdkconfig.h"
 
+#include "pcm1808_i2s.h"
 #include "si5351.h"
 
 #if CONFIG_DXFT8_TAB5_I2C_INTERNAL_PULLUPS
@@ -37,7 +38,7 @@
 #define TEST_I2C_TIMEOUT_MS 1000
 #define TEST_RF_HZ          7074000U
 
-static const char *TAG = "tab5_i2c_test";
+static const char *TAG = "tab5_bringup";
 
 typedef enum {
     FRONTEND_CLOCKS_OFF,
@@ -177,5 +178,74 @@ void app_main(void)
     ESP_LOGW(TAG, "TX clock self-test disabled; final state remains RX");
 #endif
 
-    ESP_LOGI(TAG, "SELF-TEST PASS");
+    ESP_LOGI(TAG, "SI5351 SELF-TEST PASS");
+
+#if CONFIG_DXFT8_RUN_I2S_SELF_TEST
+    ESP_LOGI(TAG, "starting PCM1808-compatible I2S validation");
+    const pcm1808_i2s_config_t adc_config = {
+        .port = I2S_NUM_1,
+        .mclk_gpio = (gpio_num_t)CONFIG_DXFT8_TAB5_I2S_MCLK_GPIO,
+        .bclk_gpio = (gpio_num_t)CONFIG_DXFT8_TAB5_I2S_BCLK_GPIO,
+        .lrck_gpio = (gpio_num_t)CONFIG_DXFT8_TAB5_I2S_LRCK_GPIO,
+        .din_gpio = (gpio_num_t)CONFIG_DXFT8_TAB5_I2S_DIN_GPIO,
+        .sample_rate_hz = CONFIG_DXFT8_TAB5_I2S_SAMPLE_RATE_HZ,
+    };
+    pcm1808_i2s_t adc = {0};
+    error = pcm1808_i2s_init(&adc, &adc_config);
+    if (error != ESP_OK) {
+        stop_on_failure(&clock, "I2S master initialization", error);
+    }
+    error = pcm1808_i2s_enable(&adc);
+    if (error != ESP_OK) {
+        const esp_err_t cleanup_error = pcm1808_i2s_deinit(&adc);
+        if (cleanup_error != ESP_OK) {
+            ESP_LOGE(TAG, "I2S cleanup also failed: %s",
+                     esp_err_to_name(cleanup_error));
+        }
+        stop_on_failure(&clock, "I2S clock/RX start", error);
+    }
+
+#if CONFIG_DXFT8_I2S_MOCK_PATTERN_TEST
+    pcm1808_mock_test_result_t mock_result = {0};
+    error = pcm1808_i2s_validate_mock(&adc,
+                                      CONFIG_DXFT8_I2S_TEST_FRAMES,
+                                      &mock_result);
+    if (error != ESP_OK) {
+        const esp_err_t cleanup_error = pcm1808_i2s_deinit(&adc);
+        if (cleanup_error != ESP_OK) {
+            ESP_LOGE(TAG, "I2S cleanup also failed: %s",
+                     esp_err_to_name(cleanup_error));
+        }
+        stop_on_failure(&clock, "I2S mock-pattern validation", error);
+    }
+    ESP_LOGI(TAG,
+             "I2S SELF-TEST PASS: %u frames checked after %u startup frames",
+             (unsigned)mock_result.frames_checked,
+             (unsigned)mock_result.startup_frames_discarded);
+#else
+    pcm1808_capture_stats_t capture_stats = {0};
+    error = pcm1808_i2s_capture_stats(&adc,
+                                      CONFIG_DXFT8_I2S_TEST_FRAMES,
+                                      &capture_stats);
+    if (error != ESP_OK) {
+        const esp_err_t cleanup_error = pcm1808_i2s_deinit(&adc);
+        if (cleanup_error != ESP_OK) {
+            ESP_LOGE(TAG, "I2S cleanup also failed: %s",
+                     esp_err_to_name(cleanup_error));
+        }
+        stop_on_failure(&clock, "PCM1808 audio capture", error);
+    }
+    ESP_LOGI(TAG, "I2S CAPTURE SANITY PASS: %u PCM1808 frames received",
+             (unsigned)capture_stats.frames_captured);
+#endif
+
+    error = pcm1808_i2s_deinit(&adc);
+    if (error != ESP_OK) {
+        stop_on_failure(&clock, "I2S shutdown", error);
+    }
+#else
+    ESP_LOGW(TAG, "I2S self-test disabled; only the Si5351 test was run");
+#endif
+
+    ESP_LOGI(TAG, "ALL ENABLED SELF-TESTS PASS; final RF clock state remains RX");
 }

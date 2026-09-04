@@ -19,3 +19,9 @@ CONFIG_DXFT8_SI5351_EXTERNAL_REFERENCE=y
 
 # Safe for a real RF board. Enable only in a local sdkconfig for mock testing.
 CONFIG_DXFT8_RUN_TX_PATH_SELF_TEST=n
+
+# Current bench default: validate the YD-board PCM1808 I2S emulator. Switch to
+# DXFT8_I2S_CAPTURE_STATS when the real RF daughter board is connected.
+CONFIG_DXFT8_RUN_I2S_SELF_TEST=y
+CONFIG_DXFT8_I2S_MOCK_PATTERN_TEST=y
+CONFIG_DXFT8_TAB5_I2S_SAMPLE_RATE_HZ=48000
